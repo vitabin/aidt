@@ -1,0 +1,15 @@
+{
+  "name": "prisma",
+  "version": "1.0.0",
+  "description": "## 프리즈마 사용",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "husky": "^9.1.3"
+  }
+}

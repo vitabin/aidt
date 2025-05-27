@@ -1,0 +1,1237 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model problem {
+  id                    Int                     @id @default(autoincrement()) @db.UnsignedInt
+  cls_id                String                  @db.VarChar(20)
+  type                  ProblemType             @default(GENERAL)
+  difficulty            Difficulty              @default(LOW)
+  latex_data            String                  @db.Text
+  explanation           String?                 @db.Text
+  ai_hint               String?                 @db.Text
+  detail_solution       String?                 @db.Text
+  answer_data           String                  @db.VarChar(256)
+  answer_type           AnswerType              @default(SHORT)
+  target_grade          Int?                    @db.TinyInt
+  target_semester       Int?                    @db.TinyInt
+  is_ebs                Boolean                 @default(false)
+  is_algeomath          Boolean                 @default(false)
+  content_status        ContentStatus
+  manage_no             String?                 @db.VarChar(64)
+  created_at            DateTime                @default(now()) @db.DateTime(0)
+  updated_at            DateTime?               @updatedAt @map("updated_at") @db.DateTime(0)
+  deleted_at            DateTime?               @db.DateTime(0)
+  study_problem         study_problem[]
+  assessment_problem    assessment_problem[]
+  question              question[]
+  shared_solution_video shared_solution_video[]
+}
+
+model study {
+  id              Int             @id @default(autoincrement()) @db.UnsignedInt
+  learning_sys_id Int
+  type            StudyType
+  basic_video     String          @db.VarChar(256)
+  created_at      DateTime        @default(now()) @db.DateTime(6)
+  study_problem   study_problem[]
+}
+
+model study_problem {
+  id            Int             @id @default(autoincrement()) @db.UnsignedInt
+  study_id      Int             @db.UnsignedInt
+  problem_id    Int             @db.UnsignedInt
+  created_at    DateTime        @default(now()) @db.DateTime(6)
+  study_perform study_perform[]
+  problem       problem         @relation(fields: [problem_id], references: [id], onDelete: Cascade)
+  study         study           @relation(fields: [study_id], references: [id], onDelete: Cascade)
+
+  @@index([problem_id], map: "study_problem_problem_id_fkey")
+  @@index([study_id], map: "study_problem_study_id_fkey")
+}
+
+model study_perform {
+  id                Int           @id @default(autoincrement())
+  study_problem_id  Int           @db.UnsignedInt
+  user_uuid         String        @db.VarChar(36)
+  solving_start     DateTime      @db.DateTime(6)
+  solving_end       DateTime?     @db.DateTime(6)
+  confidence        Int           @db.TinyInt
+  submission_answer String?       @db.Text
+  is_correct        Int           @db.TinyInt
+  created_at        DateTime      @default(now()) @db.DateTime(6)
+  study_problem     study_problem @relation(fields: [study_problem_id], references: [id])
+}
+
+model shared_solution_video {
+  id                            Int                             @id @default(autoincrement()) @db.UnsignedInt
+  user_uuid                     String                          @db.VarChar(36)
+  video_path                    String                          @db.Text
+  created_at                    DateTime                        @default(now()) @db.DateTime(6)
+  deleted_at                    DateTime?                       @db.DateTime(0)
+  shared_solution_video_like    shared_solution_video_like[]
+  shared_solution_video_comment shared_solution_video_comment[]
+  shared_solution_video_share   shared_solution_video_share?
+  shared_solution_video_data    shared_solution_video_data?
+  problem_id                    Int                             @default(1) @db.UnsignedInt
+  problem                       problem                         @relation(fields: [problem_id], references: [id])
+  question                      question?
+}
+
+model shared_solution_video_data {
+  id                       Int                   @id @default(autoincrement()) @db.UnsignedInt
+  like_count               Int                   @default(0) @db.UnsignedInt
+  view_count               Int                   @default(0) @db.UnsignedInt
+  play_count               Int                   @default(0) @db.UnsignedInt
+  pause_count              Int                   @default(0) @db.UnsignedInt
+  watch_time               Int                   @default(0) @db.UnsignedInt
+  shared_solution_video_id Int                   @unique @db.UnsignedInt
+  shared_solution_video    shared_solution_video @relation(fields: [shared_solution_video_id], references: [id])
+}
+
+model shared_solution_video_like {
+  id                       Int                   @id @default(autoincrement()) @db.UnsignedInt
+  user_uuid                String                @db.VarChar(36)
+  created_at               DateTime              @default(now()) @db.DateTime(6)
+  shared_solution_video_id Int                   @db.UnsignedInt
+  shared_solution_video    shared_solution_video @relation(fields: [shared_solution_video_id], references: [id])
+}
+
+model shared_solution_video_comment {
+  id                       Int                   @id @default(autoincrement()) @db.UnsignedInt
+  user_uuid                String                @db.VarChar(36)
+  created_at               DateTime              @default(now()) @db.DateTime(6)
+  updated_at               DateTime              @default(now()) @map("updated_at") @db.DateTime(6)
+  content                  String                @db.Text
+  deleted_at               DateTime?             @db.DateTime(0)
+  shared_solution_video_id Int                   @db.UnsignedInt
+  shared_solution_video    shared_solution_video @relation(fields: [shared_solution_video_id], references: [id])
+}
+
+model shared_solution_video_share {
+  id                       Int                   @id @default(autoincrement()) @db.UnsignedInt
+  user_uuid                String                @db.VarChar(36)
+  created_at               DateTime              @default(now()) @db.DateTime(6)
+  shared_solution_video_id Int                   @unique @db.UnsignedInt
+  scope                    ProblemSolvingScope
+  pinned                   Boolean
+  school_class_id          Int                   @db.UnsignedInt
+  school_class             school_class          @relation(fields: [school_class_id], references: [id], onDelete: Cascade)
+  shared_solution_video    shared_solution_video @relation(fields: [shared_solution_video_id], references: [id])
+}
+
+model concept_video {
+  id                  Int                   @id @default(autoincrement()) @db.UnsignedInt
+  scope               ProblemSolvingScope
+  user_uuid           String                @db.VarChar(36)
+  video_path          String                @db.Text
+  status              VideoProcessingStatus
+  concept_id          Int                   @db.UnsignedInt
+  created_at          DateTime              @default(now())
+  deleted_at          DateTime?             @db.DateTime(0)
+  concept             concept               @relation(fields: [concept_id], references: [id], onDelete: Cascade)
+  concept_video_data  concept_video_data?
+  concept_video_like  concept_video_like[]
+  concept_video_share concept_video_share?
+
+  @@index([concept_id], map: "concept_video_concept_id_fkey")
+}
+
+model concept_video_data {
+  id                    Int                     @id @default(autoincrement()) @db.UnsignedInt
+  like_count            Int
+  view_count            Int
+  concept_video_id      Int                     @unique @db.UnsignedInt
+  concept_video_comment concept_video_comment[]
+  concept_video         concept_video           @relation(fields: [concept_video_id], references: [id], onDelete: Cascade)
+}
+
+model concept_video_like {
+  id               Int           @id @default(autoincrement()) @db.UnsignedInt
+  concept_video_id Int           @db.UnsignedInt
+  user_uuid        String        @db.VarChar(36)
+  created_at       DateTime      @default(now())
+  concept_video    concept_video @relation(fields: [concept_video_id], references: [id], onDelete: Cascade)
+
+  @@index([concept_video_id], map: "concept_video_like_concept_video_id_fkey")
+}
+
+model concept_video_comment {
+  id                    Int                @id @default(autoincrement()) @db.UnsignedInt
+  concept_video_data_id Int                @db.UnsignedInt
+  created_at            DateTime           @default(now())
+  updated_at            DateTime?
+  deleted_at            DateTime?          @db.DateTime(0)
+  content               String
+  user_uuid             String             @db.VarChar(36)
+  concept_video_data    concept_video_data @relation(fields: [concept_video_data_id], references: [id], onDelete: Cascade)
+
+  @@index([concept_video_data_id], map: "concept_video_comment_concept_video_data_id_fkey")
+}
+
+model concept_video_share {
+  id               Int           @id @default(autoincrement()) @db.UnsignedInt
+  concept_video_id Int           @unique @db.UnsignedInt
+  class_table_id   Int           @db.UnsignedInt
+  pinned           Boolean
+  class_table      school_class  @relation(fields: [class_table_id], references: [id], onDelete: Cascade)
+  concept_video    concept_video @relation(fields: [concept_video_id], references: [id], onDelete: Cascade)
+
+  @@index([class_table_id], map: "concept_video_share_class_table_id_fkey")
+}
+
+model assessment {
+  id                 Int                  @id @default(autoincrement()) @db.UnsignedInt
+  type               AssessmentType       @default(NONE)
+  learning_map_id    Int?                 @db.UnsignedInt
+  learning_sys_id    Int?                 @db.UnsignedInt @default(0)
+  learning_map       learning_map?        @relation(fields: [learning_map_id], references: [id])
+  created_at         DateTime             @default(now()) @db.DateTime(0)
+  begun_at           DateTime?            @db.DateTime(0)
+  duration_in_second Int
+  assessment_class   assessment_class[]
+  assessment_problem assessment_problem[]
+}
+
+model assessment_class {
+  id              Int          @id @default(autoincrement()) @db.UnsignedInt
+  assessment_id   Int?         @db.UnsignedInt
+  school_class_id Int          @db.UnsignedInt
+  assessment      assessment?  @relation(fields: [assessment_id], references: [id])
+  school_class    school_class @relation(fields: [school_class_id], references: [id])
+
+  @@index([assessment_id], map: "assessment_class_assessment_id_fkey")
+  @@index([school_class_id], map: "assessment_class_school_class_id_fkey")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user {
+  user_uuid                String                 @id @default("UUID") @db.VarChar(36)
+  learning_map_id          Int?                   @db.UnsignedInt
+  current_learning_node_id Int?                   @db.UnsignedInt
+  created_at               DateTime               @default(now()) @db.DateTime(0)
+  assignment_finish        assignment_finish[]
+  assignment_gave          assignment_gave[]
+  assignment_gave_user     assignment_gave_user[]
+  user_plan_note           user_plan_note[]
+}
+
+model user_achievement {
+  id                      Int             @id @default(autoincrement()) @db.UnsignedInt
+  user_uuid               String          @db.VarChar(36)
+  is_force_apply          Boolean
+  learning_map_id         Int             @db.UnsignedInt
+  learning_map_node_id    Int?            @db.UnsignedInt
+  learning_sys_id         Int?            @db.UnsignedInt
+  learning_level_group_id Int?            @db.UnsignedInt
+  learning_level_id       Int             @db.UnsignedInt
+  achievement_type        AchievementType @default(NONE)
+  achievement_score       Int?            @db.TinyInt
+  created_at              DateTime        @default(now()) @db.DateTime(0)
+  learning_level          learning_level  @relation(fields: [learning_level_id], references: [id])
+
+  @@index([learning_level_id], map: "user_achievement_learning_level_id_fkey")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_group {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  type       String   @db.VarChar(1)
+  name       String   @db.VarChar(64)
+  created_at DateTime @default(now()) @db.DateTime(0)
+}
+
+model announcement_content {
+  id                        Int                         @id @default(autoincrement())
+  uuid                      String                      @db.VarChar(36)
+  school_class_id           Int?                        @db.UnsignedInt
+  view_count                Int                         @default(0)
+  grade                     String?                     @db.Char(2)
+  scope                     AnnouncementScope
+  type                      AnnouncementType?
+  title                     String                      @db.Text
+  content                   String
+  file_path                 String?                     @db.LongText
+  publish_start             DateTime?
+  publish_end               DateTime?
+  created_at                DateTime                    @default(now())
+  updated_at                DateTime
+  deleted_at                DateTime?                   @db.DateTime(0)
+  announcement_comment      announcement_comment[]
+  school_class              school_class?               @relation(fields: [school_class_id], references: [id], onDelete: Cascade)
+  announcement_content_like announcement_content_like[]
+
+  @@index([school_class_id], map: "announcement_content_class_table_id_fkey")
+}
+
+model announcement_comment {
+  id                        Int                         @id @default(autoincrement())
+  user_uuid                 String                      @db.VarChar(36)
+  comment_data              String
+  created_at                DateTime                    @default(now())
+  updated_at                DateTime
+  announcement_id           Int
+  announcement              announcement_content        @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+  announcement_content_like announcement_content_like[]
+}
+
+model announcement_content_like {
+  id                      Int                   @id @default(autoincrement())
+  user_uuid               String                @db.VarChar(36)
+  created_at              DateTime              @default(now())
+  announcement_commentId  Int?
+  announcement_content_id Int
+  announcement_comment    announcement_comment? @relation(fields: [announcement_commentId], references: [id])
+  announcement_content    announcement_content  @relation(fields: [announcement_content_id], references: [id], onDelete: Cascade)
+
+  @@index([announcement_commentId], map: "announcement_content_like_announcement_commentId_fkey")
+  @@index([announcement_content_id], map: "announcement_content_like_announcement_content_id_fkey")
+}
+
+model learning_level {
+  id                     Int                  @id @default(autoincrement()) @db.UnsignedInt
+  level                  Int                  @db.TinyInt
+  level_group_id         Int                  @db.UnsignedInt
+  achievement_score_from Int                  @default(0) @db.TinyInt
+  achievement_score_to   Int                  @default(0) @db.TinyInt
+  total_quest_count      Int                  @default(0) @db.TinyInt
+  base_lv_low_count      Int                  @default(0) @db.TinyInt
+  base_lv_medium_count   Int                  @default(0) @db.TinyInt
+  base_lv_high_count     Int                  @default(0) @db.TinyInt
+  base_lv_highest_count  Int                  @default(0) @db.TinyInt
+  pre_lv_1_count         Int                  @default(0) @db.TinyInt
+  pre_lv_2_count         Int                  @default(0) @db.TinyInt
+  pre_lv_3_count         Int                  @default(0) @db.TinyInt
+  created_at             DateTime             @default(now()) @db.DateTime(0)
+  learning_level_group   learning_level_group @relation(fields: [level_group_id], references: [id], onDelete: Cascade)
+  user_achievements      user_achievement[]
+
+  @@index([level_group_id], map: "learning_level_level_group_id_fkey")
+}
+
+model learning_level_group {
+  id              Int              @id @default(autoincrement()) @db.UnsignedInt
+  name            String           @db.VarChar(64)
+  is_default      Boolean          @default(false)
+  learning_map_id Int?             @db.UnsignedInt
+  created_at      DateTime         @default(now()) @db.DateTime(0)
+  learning_level  learning_level[]
+}
+
+model question {
+  id                       Int                    @id @default(autoincrement()) @db.UnsignedInt
+  problem_id               Int                    @db.UnsignedInt
+  learning_sys_id          Int                    @db.UnsignedInt
+  status                   QuestionStatus         @default(IDLE)
+  question_user_uuid       String                 @db.VarChar(36)
+  created_at               DateTime               @default(now()) @db.DateTime(0)
+  deleted_at               DateTime?              @db.DateTime(0)
+  title                    String                 @db.Text
+  scope                    QuestionScope
+  learning_sys             learning_sys           @relation(fields: [learning_sys_id], references: [id], onDelete: Cascade)
+  problem                  problem                @relation(fields: [problem_id], references: [id], onDelete: Cascade)
+  shared_solution_video_id Int?                   @unique @db.UnsignedInt
+  shared_solution_video    shared_solution_video? @relation(fields: [shared_solution_video_id], references: [id])
+
+  @@index([shared_solution_video_id], map: "question_shared_solution_video_id_fkey")
+  @@index([learning_sys_id], map: "question_learning_sys_id_fkey")
+}
+
+model std_learning_sys_pack {
+  id                   Int                    @id @default(autoincrement()) @db.UnsignedInt
+  cls_id               String?                @db.VarChar(20)
+  name                 String                 @unique @db.VarChar(255)
+  publish_at           DateTime               @db.DateTime(0)
+  desc                 String?                @db.VarChar(255)
+  is_activate          Boolean
+  is_deleted           Boolean                @default(false)
+  created_at           DateTime               @default(now()) @map("created_at") @db.DateTime(0)
+  updated_at           DateTime?              @updatedAt @map("updated_at") @db.DateTime(0)
+  deleted_at           DateTime?              @db.DateTime(0)
+  learning_sys_pack    learning_sys_pack[]
+  std_learning_sys_doc std_learning_sys_doc[]
+}
+
+model std_learning_sys_doc {
+  id                       Int                   @id @default(autoincrement()) @db.UnsignedInt
+  std_learning_sys_pack_id Int                   @db.UnsignedInt
+  cls_id                   String?               @db.VarChar(20)
+  name                     String                @db.VarChar(255)
+  is_deleted               Boolean               @default(false)
+  careted_at               DateTime              @default(now()) @db.DateTime(0)
+  updated_at               DateTime?             @updatedAt @map("updated_at") @db.DateTime(0)
+  deleted_at               DateTime?             @db.DateTime(0)
+  std_learning_sys         std_learning_sys[]
+  std_learning_sys_pack    std_learning_sys_pack @relation(fields: [std_learning_sys_pack_id], references: [id])
+
+  @@unique([std_learning_sys_pack_id, name])
+}
+
+model std_learning_sys {
+  id                      Int                  @id @default(autoincrement()) @db.UnsignedInt
+  std_learning_sys_doc_id Int                  @db.UnsignedInt
+  cls_id                  String?              @db.VarChar(20)
+  type                    Int                  @db.TinyInt
+  name                    String               @db.VarChar(255)
+  achievement_id          String?              @db.VarChar(20)
+  achievement_desc        String?              @db.VarChar(255)
+  grade                   String               @db.Char(64)
+  parent_id               Int?                 @map("std_learning_sys_id") @db.UnsignedInt
+  subject_main            String               @db.VarChar(255)
+  subject_sub             String               @db.VarChar(255)
+  is_deleted              Boolean              @default(false)
+  created_at              DateTime             @default(now()) @map("created_at") @db.DateTime(0)
+  updated_at              DateTime?            @updatedAt @map("updated_at") @db.DateTime(0)
+  deleted_at              DateTime?            @db.DateTime(0)
+  std_learning_sys_doc    std_learning_sys_doc @relation(fields: [std_learning_sys_doc_id], references: [id])
+  parent                  std_learning_sys?    @relation("children", fields: [parent_id], references: [id])
+  children                std_learning_sys[]   @relation("children")
+
+  @@unique([std_learning_sys_doc_id, type, name])
+  @@index([parent_id], map: "std_learning_sys_std_learning_sys_id_fkey")
+}
+
+model learning_sys_pack {
+  id                       Int                   @id @default(autoincrement()) @db.UnsignedInt
+  std_learning_sys_pack_id Int                   @db.UnsignedInt
+  name                     String                @unique @db.VarChar(255)
+  desc                     String?               @db.VarChar(255)
+  is_activate              Boolean
+  is_deleted               Boolean               @default(false)
+  created_at               DateTime              @default(now()) @db.DateTime(0)
+  updated_at               DateTime?             @updatedAt @map("updated_at") @db.DateTime(0)
+  deleted_at               DateTime?             @db.DateTime(0)
+  learning_sys_doc         learning_sys_doc[]
+  std_learning_sys_pack    std_learning_sys_pack @relation(fields: [std_learning_sys_pack_id], references: [id])
+
+  @@index([std_learning_sys_pack_id], map: "learning_sys_pack_std_learning_sys_pack_id_fkey")
+}
+
+model learning_sys_doc {
+  id                   Int               @id @default(autoincrement()) @db.UnsignedInt
+  learning_sys_pack_id Int               @db.UnsignedInt
+  name                 String            @db.VarChar(255)
+  desc                 String?           @db.VarChar(255)
+  is_deleted           Boolean           @default(false)
+  created_at           DateTime          @default(now()) @db.DateTime(0)
+  updated_at           DateTime?         @updatedAt @map("updated_at") @db.DateTime(0)
+  deleted_at           DateTime?         @db.DateTime(0)
+  learning_map         learning_map[]
+  learning_sys         learning_sys[]
+  learning_sys_pack    learning_sys_pack @relation(fields: [learning_sys_pack_id], references: [id])
+
+  @@unique([learning_sys_pack_id, name])
+}
+
+model learning_sys {
+  id                  Int                 @id @default(autoincrement()) @db.UnsignedInt
+  learning_sys_doc_id Int                 @db.UnsignedInt
+  grade               Int                 @db.TinyInt
+  semester            Int                 @db.TinyInt
+  cls_id              String?             @db.VarChar(20)
+  type                UnitType            @default(UNIT)
+  index               Int?                @db.TinyInt
+  name                String              @db.VarChar(255)
+  full_name           String              @unique @db.VarChar(255)
+  achievement_desc    String?             @db.VarChar(255)
+  achievement_id      String?             @db.VarChar(20)
+  parent_id           Int?                @map("learning_sys_id") @db.UnsignedInt
+  is_deleted          Boolean             @default(false)
+  created_at          DateTime            @default(now()) @db.DateTime(0)
+  updated_at          DateTime?           @updatedAt @map("updated_at") @db.DateTime(0)
+  deleted_at          DateTime?           @db.DateTime(0)
+  pre_learning_map_id Int?                @db.UnsignedInt
+  assignment_gave     assignment_gave[]
+  concept_reference   concept_reference[]
+  learning_map_node   learning_map_node[]
+  learning_sys_doc    learning_sys_doc    @relation(fields: [learning_sys_doc_id], references: [id])
+  parent              learning_sys?       @relation("children", fields: [parent_id], references: [id])
+  children            learning_sys[]      @relation("children")
+  pre_learning_map    pre_learning_map?
+  question            question[]
+
+  @@unique([learning_sys_doc_id, full_name])
+  @@index([parent_id], map: "learning_sys_learning_sys_id_fkey")
+}
+
+model pre_learning_map {
+  id                Int                 @id @default(autoincrement()) @db.UnsignedInt
+  learning_sys_id   Int                 @unique @db.UnsignedInt
+  cls_id            String?             @db.VarChar(20)
+  lv1_cls_id        String?             @db.VarChar(20)
+  lv2_cls_id        String?             @db.VarChar(20)
+  lv3_cls_id        String?             @db.VarChar(20)
+  created_at        DateTime            @default(now()) @db.DateTime(0)
+  updated_at        DateTime?           @updatedAt @map("updated_at") @db.DateTime(0)
+  learning_map_node learning_map_node[]
+  learning_sys      learning_sys        @relation(fields: [learning_sys_id], references: [id])
+
+  @@index([learning_sys_id], map: "pre_learning_map_learning_sys_id_fkey")
+}
+
+model learning_map {
+  id                  Int                 @id @default(autoincrement()) @db.UnsignedInt
+  learning_sys_doc_id Int                 @db.UnsignedInt
+  semester_id         Int                 @db.UnsignedInt
+  name                String              @db.VarChar(255)
+  subject             String?             @db.Char(128)
+  desc                String              @db.VarChar(255)
+  created_at          DateTime            @default(now()) @db.DateTime(0)
+  learning_sys_doc    learning_sys_doc    @relation(fields: [learning_sys_doc_id], references: [id])
+  semester            semester            @relation(fields: [semester_id], references: [id])
+  learning_map_node   learning_map_node[]
+  school_class        school_class[]
+  assessment          assessment[]
+
+  @@index([semester_id], map: "learning_map_semester_id_fkey")
+  @@index([learning_sys_doc_id], map: "learning_map_learning_sys_doc_id_fkey")
+}
+
+model learning_map_node {
+  id                  Int               @id @default(autoincrement()) @db.UnsignedInt
+  learning_map_id     Int               @db.UnsignedInt
+  learning_sys_id     Int               @db.UnsignedInt
+  pre_learning_map_id Int?              @db.UnsignedInt
+  link_prev           Int?
+  link_next           Int?
+  created_at          DateTime          @default(now()) @db.DateTime(0)
+  updated_at          DateTime?         @updatedAt @map("updated_at") @db.DateTime(0)
+  week                Int               @db.TinyInt
+  learning_map        learning_map      @relation(fields: [learning_map_id], references: [id])
+  learning_sys        learning_sys      @relation(fields: [learning_sys_id], references: [id])
+  pre_learning_map    pre_learning_map? @relation(fields: [pre_learning_map_id], references: [id])
+
+  @@unique([learning_map_id, learning_sys_id])
+  @@index([learning_sys_id], map: "learning_map_node_learning_sys_id_fkey")
+  @@index([learning_map_id], map: "learning_map_node_learning_map_id_fkey")
+  @@index([pre_learning_map_id], map: "learning_map_node_pre_learning_map_id_fkey")
+}
+
+model semester {
+  id           Int            @id @default(autoincrement()) @db.UnsignedInt
+  year         String         @db.Char(4)
+  grade        String         @db.Char(2)
+  semester     String         @db.Char(1)
+  begin_date   DateTime       @db.DateTime(0)
+  end_date     DateTime       @db.DateTime(0)
+  desc         String         @db.VarChar(255)
+  created_at   DateTime       @default(now()) @db.DateTime(0)
+  learning_map learning_map[]
+}
+
+/// This model has been renamed to 'school_class' during introspection, because the original name 'class' is reserved.
+model school_class {
+  id                          Int                           @id @default(autoincrement()) @db.UnsignedInt
+  school_id                   Int                           @db.UnsignedInt
+  learning_map_id             Int                           @db.UnsignedInt
+  grade                       String?                       @db.Char(2)
+  class                       String?                       @db.VarChar(128)
+  created_at                  DateTime                      @default(now()) @db.DateTime(0)
+  announcement_content        announcement_content[]
+  assessment_class            assessment_class[]
+  school                      school                        @relation(fields: [school_id], references: [id], onDelete: Cascade)
+  class_schedule              class_schedule[]
+  concept_reference           concept_reference[]
+  concept_video_share         concept_video_share[]
+  learning_map                learning_map                  @relation(fields: [learning_map_id], references: [id], onDelete: Cascade)
+  shared_solution_video_share shared_solution_video_share[]
+
+  @@index([school_id], map: "class_school_id_fkey")
+  @@map("class")
+}
+
+model class_schedule {
+  id             Int          @id @default(autoincrement()) @db.UnsignedInt
+  class_id       Int          @db.UnsignedInt
+  day_week       String?      @db.VarChar(1)
+  class_period   String?      @db.VarChar(2)
+  subject_name   String?      @db.VarChar(128)
+  classroom_name String?      @db.VarChar(128)
+  created_at     DateTime     @default(now()) @db.DateTime(0)
+  school_class   school_class @relation(fields: [class_id], references: [id], onDelete: Cascade)
+
+  @@index([class_id], map: "class_schedule_class_id_fkey")
+}
+
+model school {
+  id            Int            @id @default(autoincrement()) @db.UnsignedInt
+  school_id     String?        @db.VarChar(10)
+  school_name   String?        @db.VarChar(128)
+  division_type String?        @db.VarChar(10)
+  created_at    DateTime       @default(now()) @db.DateTime(0)
+  updated_at    DateTime?      @db.DateTime(0)
+  school_class  school_class[]
+}
+
+model assignment_finish {
+  id                 Int      @id @default(autoincrement()) @db.UnsignedInt
+  user_uuid          String   @db.VarChar(36)
+  assignment_gave_id Int      @db.UnsignedInt
+  finished_at        DateTime @db.DateTime(0)
+  created_at         DateTime @default(now()) @db.DateTime(0)
+  user               user     @relation(fields: [user_uuid], references: [user_uuid], onDelete: Cascade)
+
+  @@index([user_uuid], map: "assignment_finish_user_uuid_fkey")
+}
+
+model assignment_gave {
+  id                   Int                    @id @default(autoincrement()) @db.UnsignedInt
+  user_uuid            String                 @db.VarChar(36)
+  learning_map_id      Int                    @default(0) @db.UnsignedInt
+  learning_sys_id      Int                    @db.UnsignedInt
+  given_at             DateTime?              @db.DateTime(0)
+  type                 AssignmentType
+  created_at           DateTime               @default(now()) @db.DateTime(0)
+  learning_sys         learning_sys           @relation(fields: [learning_sys_id], references: [id], onDelete: Cascade)
+  user                 user                   @relation(fields: [user_uuid], references: [user_uuid], onDelete: Cascade)
+  assignment_gave_node assignment_gave_node[]
+  assignment_gave_user assignment_gave_user[]
+
+  @@index([learning_sys_id], map: "assignment_gave_learning_sys_id_fkey")
+  @@index([user_uuid], map: "assignment_gave_user_uuid_fkey")
+}
+
+model assignment_gave_node {
+  id                 Int             @id @default(autoincrement()) @db.UnsignedInt
+  assignment_gave_id Int             @db.UnsignedInt
+  node_id            Int             @db.UnsignedInt
+  assignment_gave    assignment_gave @relation(fields: [assignment_gave_id], references: [id], onDelete: Cascade)
+
+  @@index([assignment_gave_id], map: "assignment_gave_id")
+}
+
+model assignment_gave_user {
+  id                 Int             @id @default(autoincrement()) @db.UnsignedInt
+  assignment_gave_id Int             @db.UnsignedInt
+  user_uuid          String          @default("UUID") @db.VarChar(36)
+  assignment_gave    assignment_gave @relation(fields: [assignment_gave_id], references: [id], onDelete: Cascade)
+  user               user            @relation(fields: [user_uuid], references: [user_uuid], onDelete: Cascade)
+
+  assignment_problem assignment_problem[]
+
+  @@index([assignment_gave_id], map: "assignment_gave_id")
+  @@index([user_uuid], map: "assignment_gave_user_user_uuid_fkey")
+}
+
+model assignment_problem {
+  id                      Int                  @id @default(autoincrement()) @db.UnsignedInt
+  assignment_gave_user_id Int                  @db.UnsignedInt
+  problem_id              Int                  @db.UnsignedInt
+  status                  AssignmentStatus     @default(IDEL)
+  assignment_perform      assignment_perform?
+  assignment_gave_user    assignment_gave_user @relation(fields: [assignment_gave_user_id], references: [id])
+  created_at              DateTime             @default(now()) @db.DateTime(0)
+}
+
+model assignment_perform {
+  id                    Int      @id @default(autoincrement()) @db.UnsignedInt
+  assignment_problem_id Int      @unique @db.UnsignedInt
+  submission_answer     String   @db.Text
+  is_correct            Int      @db.TinyInt
+  confidence            Int      @db.TinyInt
+  created_at            DateTime @default(now()) @db.DateTime(0)
+
+  assignment_problem assignment_problem @relation(fields: [assignment_problem_id], references: [id])
+}
+
+model assessment_perform {
+  id                    Int                @id @default(autoincrement()) @db.UnsignedInt
+  user_uuid             String             @db.VarChar(36)
+  assessment_problem_id Int                @db.UnsignedInt
+  solving_start         DateTime?          @db.DateTime(0)
+  solving_end           DateTime?          @db.DateTime(0)
+  submission_answer     String             @db.Text
+  is_correct            Int?               @db.TinyInt
+  created_at            DateTime           @default(now()) @db.DateTime(0)
+  assessment_problem    assessment_problem @relation(fields: [assessment_problem_id], references: [id], onDelete: Cascade)
+
+  @@index([assessment_problem_id], map: "assessment_perform_assessment_problem_id_fkey")
+}
+
+model assessment_problem {
+  id                 Int                  @id @default(autoincrement()) @db.UnsignedInt
+  assessment_id      Int                  @db.UnsignedInt
+  problem_id         Int                  @default(0) @db.UnsignedInt
+  problem            problem              @relation(fields: [problem_id], references: [id], onDelete: Cascade)
+  created_at         DateTime             @default(now()) @db.DateTime(0)
+  assessment_perform assessment_perform[]
+  assessment         assessment           @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@index([assessment_id], map: "assessment_problem_assessment_id_fkey")
+}
+
+model admin {
+  pid                   Int                   @id @default(autoincrement())
+  name                  String                @db.VarChar(64)
+  email                 String                @db.VarChar(64)
+  division              String                @db.VarChar(64)
+  admin_group_id        Int
+  period_start          DateTime              @db.DateTime(0)
+  period_end            DateTime              @db.DateTime(0)
+  is_delete             Boolean               @default(false)
+  delete_at             DateTime?             @db.DateTime(0)
+  updated_at            DateTime?             @db.DateTime(0)
+  created_at            DateTime?             @default(now()) @db.DateTime(0)
+  login_fail_cnt        Int                   @default(0) @db.TinyInt
+  sso_access_token      String                @db.Text()
+  sso_refresh_token     String                @db.Text()
+  sso_id                String                @db.VarChar(64)
+  sso_token_expire      Int                   @db.UnsignedInt
+  admin_group          admin_group            @relation(fields: [admin_group_id], references: [pid], onDelete: NoAction, onUpdate: NoAction, map: "admin_admin_group_pid_fk")
+  admin_create_history admin_create_history[]
+
+  @@index([admin_group_id], map: "admin_admin_group_pid_fk")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model admin_create_history {
+  pid            Int         @id @default(autoincrement())
+  name           String      @db.VarChar(64)
+  password       String?     @db.VarChar(128)
+  email          String      @db.VarChar(64)
+  division       String      @db.VarChar(64)
+  admin_id       Int?
+  admin_group_id Int
+  proc_type      Int         @db.TinyInt
+  proc_status    Int         @db.TinyInt
+  proc_datetime  DateTime    @db.DateTime(0)
+  created_at     DateTime    @default(now()) @db.DateTime(0)
+  admin_group    admin_group @relation(fields: [admin_group_id], references: [pid], onDelete: NoAction, onUpdate: NoAction, map: "admin_create_history_admin_group_pid_fk")
+  admin          admin?      @relation(fields: [admin_id], references: [pid], onDelete: NoAction, onUpdate: NoAction, map: "admin_create_history_admin_pid_fk")
+
+  @@index([admin_group_id], map: "admin_create_history_admin_group_pid_fk")
+  @@index([admin_id], map: "admin_create_history_admin_pid_fk")
+}
+
+model admin_function {
+  pid             Int                             @id @default(autoincrement())
+  name            String                          @unique(map: "name") @db.VarChar(64)
+  desc            String?                         @db.VarChar(256)
+  is_delete       Boolean                         @default(false)
+  delete_at       DateTime?                       @db.DateTime(0)
+  updated_at      DateTime                        @default(now()) @db.DateTime(0)
+  created_at      DateTime                        @default(now()) @db.DateTime(0)
+  admin_functions admin_function_on_admin_group[]
+}
+
+model admin_function_on_admin_group {
+  admin_group_id    Int
+  admin_function_id Int
+  created_at        DateTime       @default(now())
+  admin_function    admin_function @relation(fields: [admin_function_id], references: [pid])
+  admin_group       admin_group    @relation(fields: [admin_group_id], references: [pid])
+
+  @@id([admin_group_id, admin_function_id])
+  @@index([admin_function_id], map: "admin_function_on_admin_group_admin_function_id_fkey")
+}
+
+model admin_group {
+  pid                  Int                             @id @default(autoincrement())
+  name                 String                          @db.VarChar(63)
+  is_delete            Boolean                         @default(false)
+  delete_at            DateTime?                       @db.DateTime(0)
+  updated_at           DateTime                        @default(now()) @db.DateTime(0)
+  created_at           DateTime                        @default(now()) @db.DateTime(0)
+  admin                admin[]
+  admin_create_history admin_create_history[]
+  admin_functions      admin_function_on_admin_group[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_plan_note {
+  id           Int       @id @default(autoincrement())
+  user_uuid    String    @default("UUID") @db.VarChar(36)
+  dream_jobs   String?   @db.VarChar(255)
+  dream_reason String?   @db.Text
+  created_at   DateTime? @default(now()) @db.Timestamp(0)
+  user         user      @relation(fields: [user_uuid], references: [user_uuid], onDelete: NoAction, onUpdate: NoAction, map: "user_plan_note_ibfk_1")
+
+  @@index([user_uuid], map: "user_uuid")
+}
+
+model user_status {
+  id             Int       @id @default(autoincrement())
+  user_uuid      String    @default("UUID") @db.VarChar(36)
+  status_message String?   @db.Text
+  physical_state Int       @default(0) @db.TinyInt
+  mental_state   Int       @default(0) @db.TinyInt
+  created_at     DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model common_concept_video {
+  id                        Int                         @id @default(autoincrement()) @db.UnsignedInt
+  concept_id                Int                         @default(1) @db.UnsignedInt
+  title                     String?                     @db.Text
+  commentary                String?                     @db.Text
+  video_path                String?                     @db.Text
+  subtitle_path             String?                     @db.Text
+  sign_video_path           String?                     @db.Text
+  status                    VideoProcessingStatus?      @default(IDLE)
+  created_by                Int?                        @db.UnsignedInt
+  created_at                DateTime                    @default(now())
+  deleted_at                DateTime?                   @db.DateTime(0)
+  concept                   concept                     @relation(fields: [concept_id], references: [id])
+  common_concept_video_data common_concept_video_data?
+  common_concept_video_like common_concept_video_like[]
+  common_concept_video_play common_concept_video_play[]
+}
+
+model common_concept_video_data {
+  id                           Int                            @id @default(autoincrement()) @db.UnsignedInt
+  like_count                   Int
+  view_count                   Int
+  common_concept_video_id      Int                            @unique @db.UnsignedInt
+  common_concept_video_comment common_concept_video_comment[]
+  common_concept_video         common_concept_video           @relation(fields: [common_concept_video_id], references: [id], onDelete: Cascade)
+}
+
+model common_concept_video_like {
+  id                      Int                  @id @default(autoincrement()) @db.UnsignedInt
+  common_concept_video_id Int                  @db.UnsignedInt
+  user_uuid               String               @db.VarChar(36)
+  created_at              DateTime             @default(now())
+  common_concept_video    common_concept_video @relation(fields: [common_concept_video_id], references: [id], onDelete: Cascade)
+
+  @@index([common_concept_video_id], map: "common_concept_video_like_common_concept_video_id_fkey")
+}
+
+model common_concept_video_comment {
+  id                           Int                       @id @default(autoincrement()) @db.UnsignedInt
+  common_concept_video_data_id Int                       @db.UnsignedInt
+  created_at                   DateTime                  @default(now())
+  updated_at                   DateTime?
+  deleted_at                   DateTime?                 @db.DateTime(0)
+  content                      String
+  user_uuid                    String                    @db.VarChar(36)
+  common_concept_video_data    common_concept_video_data @relation(fields: [common_concept_video_data_id], references: [id], onDelete: Cascade)
+
+  @@index([common_concept_video_data_id], map: "common_concept_video_comment_common_concept_video_data_id_fkey")
+}
+
+model common_concept_video_play {
+  id                      Int                  @id @default(autoincrement()) @db.UnsignedInt
+  common_concept_video_id Int                  @db.UnsignedInt
+  user_uuid               String               @db.VarChar(36)
+  created_at              DateTime             @default(now()) @db.DateTime(0)
+  ended_at                DateTime?            @db.DateTime(0)
+  common_concpet_video    common_concept_video @relation(fields: [common_concept_video_id], references: [id], onDelete: Cascade)
+}
+
+model concept {
+  id                   Int                    @id @default(autoincrement()) @db.UnsignedInt
+  cls_id               String                 @db.VarChar(20)
+  type                 ConceptType
+  order_no             Int                    @default(0) @db.UnsignedInt
+  type_name            String                 @db.VarChar(128)
+  latex_data           String                 @db.Text
+  content_status       ContentStatus
+  is_algeomath         Boolean                @default(false)
+  created_by           Int?                   @db.UnsignedInt
+  created_at           DateTime               @default(now()) @db.DateTime(0)
+  updated_at           DateTime?              @updatedAt @map("updated_at") @db.DateTime(0)
+  common_concept_video common_concept_video[]
+  concept_perform      concept_perform[]
+  concept_reference    concept_reference[]
+  concept_solving      concept_solving[]
+  concept_video_id     concept_video[]
+
+  @@unique([cls_id, order_no])
+}
+
+model concept_perform {
+  id              Int      @id @default(autoincrement()) @db.UnsignedInt
+  concept_id      Int      @db.UnsignedInt
+  learning_sys_id Int      @db.UnsignedInt
+  user_uuid       String   @db.VarChar(36)
+  created_at      DateTime @default(now()) @db.DateTime(0)
+  updated_at      DateTime @default(now()) @db.DateTime(0)
+  concept         concept  @relation(fields: [concept_id], references: [id], onDelete: Cascade)
+
+  @@index([concept_id], map: "concept_perform_concept_id_fkey")
+}
+
+model concept_solving {
+  id         Int                   @id @default(autoincrement()) @db.UnsignedInt
+  concept_id Int                   @db.UnsignedInt
+  user_uuid  String                @db.VarChar(36)
+  video_path String                @db.Text
+  status     VideoProcessingStatus @default(IDLE)
+  pinned     Boolean               @default(false)
+  scope      ConceptSolvingScope
+  created_at DateTime              @default(now()) @db.DateTime(0)
+  deleted_at DateTime?             @db.DateTime(0)
+  concept    concept               @relation(fields: [concept_id], references: [id], onDelete: Cascade)
+
+  @@index([concept_id], map: "concept_solving_concept_id_fkey")
+}
+
+model concept_solving_share {
+  id               Int @id @default(autoincrement()) @db.UnsignedInt
+  concept_video_id Int @db.UnsignedInt
+  class_table_id   Int @db.UnsignedInt
+
+  @@index([concept_video_id], map: "concept_solving_share_concept_solving_id_fkey")
+  @@index([class_table_id], map: "concept_solving_share_school_class_id_fkey")
+}
+
+model concept_reference {
+  id                        Int                         @id @default(autoincrement()) @db.UnsignedInt
+  uuid                      String                      @default("UUID") @db.VarChar(36)
+  learning_sys_id           Int                         @db.UnsignedInt
+  concept_id                Int                         @db.UnsignedInt
+  scope                     ConceptSolvingScope
+  class_table_id            Int                         @db.UnsignedInt
+  created_at                DateTime                    @default(now())
+  class_table               school_class                @relation(fields: [class_table_id], references: [id], onDelete: Cascade)
+  concept                   concept                     @relation(fields: [concept_id], references: [id], onDelete: Cascade)
+  learning_sys              learning_sys                @relation(fields: [learning_sys_id], references: [id], onDelete: Cascade)
+  concept_reference_comment concept_reference_comment[]
+  concept_reference_data    concept_reference_data?
+  concept_reference_like    concept_reference_like[]
+
+  @@index([class_table_id], map: "concept_reference_class_table_id_fkey")
+  @@index([learning_sys_id], map: "concept_reference_learning_sys_id_fkey")
+  @@index([concept_id], map: "concept_reference_study_id_fkey")
+}
+
+model concept_reference_data {
+  id                     Int                      @id @default(autoincrement()) @db.UnsignedInt
+  concept_reference_id   Int                      @unique @db.UnsignedInt
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @default(now())
+  deleted_at             DateTime?                @db.DateTime(0)
+  content_title          String
+  content_data           String
+  like_count             Int
+  view_count             Int
+  concept_reference      concept_reference        @relation(fields: [concept_reference_id], references: [id])
+  concept_reference_file concept_reference_file[]
+}
+
+model concept_reference_file {
+  id                        Int                    @id @default(autoincrement()) @db.UnsignedInt
+  created_at                DateTime               @default(now())
+  path                      String
+  concept_reference_data_id Int                    @db.UnsignedInt
+  concept_reference_data    concept_reference_data @relation(fields: [concept_reference_data_id], references: [id], onDelete: Cascade)
+}
+
+model concept_reference_like {
+  id                   Int               @id @default(autoincrement()) @db.UnsignedInt
+  concept_reference_id Int               @db.UnsignedInt
+  user_uuid            String            @db.VarChar(36)
+  created_at           DateTime          @default(now())
+  concept_reference    concept_reference @relation(fields: [concept_reference_id], references: [id], onDelete: Cascade)
+
+  @@index([concept_reference_id], map: "concept_reference_like_concept_reference_id_fkey")
+}
+
+model concept_reference_comment {
+  id                   Int               @id @default(autoincrement()) @db.UnsignedInt
+  concept_reference_id Int               @db.UnsignedInt
+  comment              String
+  user_uuid            String            @db.VarChar(36)
+  created_at           DateTime          @default(now())
+  deleted_at           DateTime?         @db.DateTime(0)
+  updated_at           DateTime
+  concept_reference    concept_reference @relation(fields: [concept_reference_id], references: [id], onDelete: Cascade)
+
+  @@index([concept_reference_id], map: "concept_reference_comment_concept_reference_id_fkey")
+}
+
+model report {
+  id            Int          @id @default(autoincrement()) @db.UnsignedInt
+  uuid          String       @db.VarChar(36)
+  type          ReportType
+  target_id     Int          @db.UnsignedInt
+  reason        String       @db.VarChar(255)
+  reason_detail String?      @db.VarChar(255)
+  admin_pid     Int?
+  status        ReportStatus @default(IDLE)
+  created_at    DateTime     @default(now()) @db.Timestamp(0)
+  processed_at  DateTime?    @db.Timestamp(0)
+
+  @@index([admin_pid], map: "admin_pid")
+  @@index([status], map: "status")
+  @@index([type], map: "type")
+  @@index([uuid], map: "uuid")
+}
+
+model learning_history {
+  id         Int        @id @default(autoincrement()) @db.UnsignedInt
+  created_at DateTime   @default(now()) @db.DateTime(0)
+  state      InOutState
+  user_uuid  String     @db.VarChar(36)
+  cls_id     String     @db.VarChar(20)
+}
+
+model study_chapter_plan {
+  id                   Int    @id @default(autoincrement()) @db.UnsignedInt
+  uuid                 String @db.VarChar(36)
+  semester_id          Int    @db.UnsignedInt
+  learning_sys_id      Int?   @db.UnsignedInt
+  progress_rate        Int    @default(0) @db.UnsignedTinyInt
+  achievement_level    Int    @default(0) @db.UnsignedTinyInt
+  correct_rate         Int    @default(0) @db.UnsignedTinyInt
+  metarecognition_rate Int    @default(0) @db.UnsignedTinyInt
+
+  @@index([semester_id], map: "semester_id")
+  @@index([uuid], map: "uuid")
+}
+
+model partner {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  partner_id String   @db.VarChar(36)
+  grade      String   @db.Char(2)
+  created_at DateTime @default(now()) @db.DateTime(0)
+}
+
+model batch_transfer {
+  id                   Int      @id @default(autoincrement()) @db.UnsignedInt
+  partner_id           String   @db.VarChar(36)
+  transfer_id          String   @db.VarChar(36)
+  partner_access_token String   @db.Text
+  start_time           String   @db.VarChar(30)
+  created_at           DateTime @default(now()) @db.DateTime(0)
+}
+
+model chunk_format_data {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  chunk_index Int      @db.UnsignedInt
+  chunk_data  String   @db.Text
+  chunk_size  String   @db.VarChar(36)
+  transfer_id String   @db.VarChar(36)
+  created_at  DateTime @default(now()) @db.DateTime(0)
+}
+
+model config {
+  id    Int    @id @default(autoincrement()) @db.UnsignedInt
+  key   String @unique @db.VarChar(255)
+  value String @db.Text
+}
+
+model notification {
+  id               Int      @id @default(autoincrement()) @db.UnsignedInt
+  trigger_uuid     String   @default("SYSTEM") @db.VarChar(36)
+  taker_uuid       String   @db.VarChar(36)
+  action           Int      @default(1) @db.UnsignedInt
+  additional_data1 Int?
+  additional_data2 Int?
+  additional_data3 Int?
+  additional_text  String?  @db.VarChar(255)
+  read             Int      @default(0) @db.UnsignedInt
+  created_at       DateTime @default(now()) @db.DateTime(0)
+
+  @@index([action], map: "action")
+  @@index([created_at], map: "created_at")
+  @@index([taker_uuid], map: "taker_uuid")
+  @@index([trigger_uuid], map: "trigger_uuid")
+}
+
+// 성취기준별 성취수준 정보 테이블
+model achievement_standard {
+  id                  Int                   @id @default(autoincrement()) @db.UnsignedInt
+  achievement_id      String                @db.VarChar(20)
+  achievement_desc    String                @db.VarChar(255)
+  eval_model          EvaluationModel       @default(SHORT_SELECT)
+  model_desc          String                @db.Text
+  achievement_level   AchivementLevel       
+  level_desc          String                @db.Text
+  created_at          DateTime              @default(now()) @db.DateTime(0)
+  updated_at          DateTime?             @updatedAt @map("updated_at") @db.DateTime(0)
+  deleted_at          DateTime?             @db.DateTime(0)
+
+  @@unique([achievement_id, eval_model, achievement_level])
+}
+
+// 영역별 성취수준 정보 테이블
+model achievement_region {
+  id                  Int                   @id @default(autoincrement()) @db.UnsignedInt
+  achievement_id      String                @db.VarChar(20)
+  region_name         String                @db.VarChar(255)
+  achievement_level   AchivementLevel       
+  eval_category       EvaluationCategory    
+  level_desc          String                @db.Text
+  created_at          DateTime              @default(now()) @db.DateTime(0)
+  updated_at          DateTime?             @updatedAt @map("updated_at") @db.DateTime(0)
+  deleted_at          DateTime?             @db.DateTime(0)
+
+  @@unique([achievement_id, achievement_level, eval_category])
+}
+
+// 성취수준 Enum (A,B,C,D,E)
+enum AchivementLevel {
+  A
+  B
+  C
+  D
+  E
+}
+
+// 영역별 성취수준의 평가범주 구분 Enum (지식,이해,과정,기능,가치,태도)
+enum EvaluationCategory {
+  KU              // KNOWLEDGE_UNDERSTANDING // 지식,이해 약어
+  PF              // PROCESS_FUNCTION // 과정,기능 약어
+  VA              // VALUE_ATTITUDE // 가치,태도 약어
+}
+
+// 성취기준별 성취수준의 평가모델 구분 Enum (단답형,선다형,단답/선다 복합)
+enum EvaluationModel {
+  SHORT_SELECT    // 단답형, 선다형 복합 구성
+  SHORT           // 단답형
+  SELECT          // 선다형
+}
+
+model book_marker {
+  id              Int     @id @default(autoincrement()) @db.UnsignedInt
+  user_uuid       String  @db.VarChar(36)
+  learning_sys_id Int     @db.UnsignedInt
+  semester        Int     @db.TinyInt
+  status          Int     @db.TinyInt
+}
+
+enum InOutState {
+  Initialized
+  Terminated
+}
+
+enum ReportType {
+  CONCENT_VIDEO
+  PROBLEM_SOLVING_VIDEO
+}
+
+enum ReportStatus {
+  IDLE
+  WORKING
+  DONE
+  REJECT
+}
+
+enum UnitType {
+  UNIT
+  CHAPTER
+  SECTION
+  SUBSECTION
+}
+
+enum AchievementType {
+  NONE
+  DIAGNOSTIC
+  UNIT_PROGRESS
+  UNIT_END
+  COMPREHENSIVE
+}
+
+enum ProblemType {
+  GENERAL
+  DIAGNOSTIC
+  UNIT_PROGRESS
+  UNIT_END
+  COMPREHENSIVE
+}
+
+enum Difficulty {
+  LOW
+  MIDDLE
+  HIGH
+  HIGHEST
+}
+
+enum StudyType {
+  BASIC
+  CONFIRM
+  FEEDBACK
+  ADDITIONAL
+}
+
+enum ProblemSolvingStatus {
+  IDLE
+  SAVED
+  DELETED
+}
+
+enum ProblemSolvingScope {
+  ME
+  CLASS
+  ALL
+}
+
+enum QuestionScope {
+  ME
+  CLASS
+  ALL
+}
+
+enum QuestionStatus {
+  IDLE
+  QUESTION
+  SOLVING
+}
+
+enum VideoProcessingStatus {
+  IDLE
+  PROCESSING
+  DONE
+  ERROR
+}
+
+enum AnnouncementScope {
+  ALL
+  STUDENTS
+  PARENTS
+}
+
+enum AnnouncementType {
+  MAINTENANCE
+  EMERGENCY
+  ETC
+}
+
+enum ConceptType {
+  BASIC
+  ADVANCED
+}
+
+enum ConceptSolvingScope {
+  ME
+  CLASS
+  ALL
+}
+
+enum ContentStatus {
+  ACTIVED
+  TEMPSAVE
+  TEMPDELETE
+  DELETED
+}
+
+enum AssessmentType {
+  NONE
+  DIAGNOSTIC
+  UNIT
+  COMPREHENSIVE
+}
+
+enum AnswerType {
+  SHORT
+  SELECT
+  MULTISELECT
+}
+
+enum AssignmentType {
+  BASIC
+  CONFIRM
+  FEEDBACK
+  METACOGNITION
+}
+
+enum AssignmentStatus {
+  IDEL
+  SUBMIT
+}

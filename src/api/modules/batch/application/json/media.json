@@ -1,0 +1,52 @@
+[
+    {
+        "object_extensions": [
+            {
+                "id": "http://m-1-1.dev-matu.co.kr/video_id_01",
+                "length": 3000,
+                "difficulty": 3,
+                "difficulty-min": 1,
+                "difficulty-max": 5,
+                "curriculum-standard-id": [
+                    "M3MATA04B09C23",
+                    "M3MATA04B08C20"
+                ],
+                "common": true
+            },
+            {
+                "id": "http://m-1-1.dev-matu.co.kr/video_id_02",
+                "length": 3000,
+                "difficulty": 3,
+                "difficulty-min": 1,
+                "difficulty-max": 5,
+                "curriculum-standard-id": [
+                    "M3MATA04B09C23",
+                    "M3MATA04B08C20"
+                ],
+                "common": true
+            }
+        ],
+        "result_extensions": [
+            {
+                "id": "http://m-1-1.dev-matu.co.kr/video_id_03",
+                "aitutor-recommended": true,
+                "duration": 2839,
+                "completion": true,
+                "attempt": 1,
+                "mute-cnt": 5,
+                "skip-cnt": 5,
+                "pause-cnt": 5
+            },
+            {
+                "id": "http://m-1-1.dev-matu.co.kr/video_id_04",
+                "aitutor-recommended": true,
+                "duration": 2839,
+                "completion": true,
+                "attempt": 1,
+                "mute-cnt": 5,
+                "skip-cnt": 5,
+                "pause-cnt": 5
+            }
+        ]
+    }
+]

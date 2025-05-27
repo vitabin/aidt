@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set +e
+
+diff=$(git diff --cached --name-status migrations/**/*.sql)
+
+if [ -n "$diff" ]; then
+  changes=$(echo "$diff" | grep -E '^[MD]')
+
+  if [ -n "$changes" ]; then
+    echo "Error: 기존 sql 파일의 수정 또는 삭제가 감지되어 커밋이 거부되었습니다."
+    exit 1
+  fi
+fi
+
+exit 0

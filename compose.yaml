@@ -1,0 +1,77 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    image: happyedutech-ncr.kr.ncr.ntruss.com/aidt-back
+    container_name: app
+    restart: always
+    user: root
+    ports:
+      - 3000:3000
+      - 9229:9229
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    command:
+      - yarn
+      - start:debug
+
+  mysql:
+    image: bitnami/mysql:8.0.34
+    container_name: mysql
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=matumatu
+      - MYSQL_REPLICATION_MODE=master
+      - MYSQL_REPLICATION_USER=my_repl_user
+      - MYSQL_REPLICATION_PASSWORD=my_repl_password
+      - MYSQL_DATABASE=matumatu
+    volumes:
+      - mysql_data:/bitnami/mysql/data
+  mysql-read:
+    image: bitnami/mysql:8.0.34
+    container_name: mysql-read
+    restart: always
+    environment:
+      - MYSQL_REPLICATION_MODE=slave
+      - MYSQL_REPLICATION_USER=my_repl_user
+      - MYSQL_REPLICATION_PASSWORD=my_repl_password
+      - MYSQL_MASTER_HOST=mysql
+      - MYSQL_MASTER_ROOT_PASSWORD=matumatu
+    ports:
+      - 3307:3306
+
+  redis:
+    image: bitnami/redis:7.0.13
+    container_name: redis
+    restart: always
+    ports:
+      - '6379:6379'
+    environment:
+      - REDIS_ACLFILE=/redis-user.conf
+      - REDIS_PASSWORD=not-use-this-password
+    volumes:
+      - ./redis-user.conf:/redis-user.conf
+
+  minio:
+    image: bitnami/minio:latest
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=miniopass
+    restart: always
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - data_minio:/data
+
+volumes:
+  mysql_data:
+  data_minio:
